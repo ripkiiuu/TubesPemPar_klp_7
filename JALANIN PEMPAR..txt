@@ -1,0 +1,6 @@
+mpiexec -n 2 python k_means_pempar.py --output-csv hasil.csv --quiet
+mpiexec -n 4 python k_means_pempar.py --output-csv hasil.csv --quiet
+mpiexec -n 6 python k_means_pempar.py --output-csv hasil.csv --quiet
+mpiexec -n 8 python k_means_pempar.py --output-csv hasil.csv --quiet
+
+python buat_grafik.py --csv hasil.csv 

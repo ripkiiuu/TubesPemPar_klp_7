@@ -1,6 +1,23 @@
-mpiexec -n 2 python k_means_pempar_simple.py --output-csv hasil.csv --K 5 --quiet
-mpiexec -n 4 python k_means_pempar_simple.py --output-csv hasil.csv --K 5 --quiet
-mpiexec -n 6 python k_means_pempar_simple.py --output-csv hasil.csv --K 5 --quiet
-mpiexec -n 8 python k_means_pempar_simple.py --output-csv hasil.csv --K 5 --quiet
+== HAPUS hasil.csv lama dulu sebelum run ulang ==
+del hasil.csv
 
-python buat_grafik.py --csv hasil.csv 
+== K = 3 ==
+mpiexec -n 2 python k_means_pempar.py --output-csv hasil.csv --K 3 --quiet
+mpiexec -n 4 python k_means_pempar.py --output-csv hasil.csv --K 3 --quiet
+mpiexec -n 6 python k_means_pempar.py --output-csv hasil.csv --K 3 --quiet
+mpiexec -n 8 python k_means_pempar.py --output-csv hasil.csv --K 3 --quiet
+
+== K = 5 ==
+mpiexec -n 2 python k_means_pempar.py --output-csv hasil.csv --K 5 --quiet
+mpiexec -n 4 python k_means_pempar.py --output-csv hasil.csv --K 5 --quiet
+mpiexec -n 6 python k_means_pempar.py --output-csv hasil.csv --K 5 --quiet
+mpiexec -n 8 python k_means_pempar.py --output-csv hasil.csv --K 5 --quiet
+
+== K = 7 ==
+mpiexec -n 2 python k_means_pempar.py --output-csv hasil.csv --K 7 --quiet
+mpiexec -n 4 python k_means_pempar.py --output-csv hasil.csv --K 7 --quiet
+mpiexec -n 6 python k_means_pempar.py --output-csv hasil.csv --K 7 --quiet
+mpiexec -n 8 python k_means_pempar.py --output-csv hasil.csv --K 7 --quiet
+
+== Buat Grafik ==
+python buat_grafik.py --csv hasil.csv

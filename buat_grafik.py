@@ -64,23 +64,34 @@ def load_hasil(csv_path):
             print(f"Kolom yang ada: {list(df.columns)}")
             sys.exit(1)
 
-    # Ambil rata-rata jika ada duplikat (n_data, n_procs)
-    df = df.groupby(['n_data', 'n_procs'], as_index=False).mean(numeric_only=True)
+    # Ambil rata-rata jika ada duplikat (n_data, n_procs, K)
+    groupby_cols = ['n_data', 'n_procs']
+    if 'K' in df.columns:
+        groupby_cols.append('K')
+    df = df.groupby(groupby_cols, as_index=False).mean(numeric_only=True)
     df = df.sort_values(['n_procs', 'n_data'])
 
     print(f"Data berhasil dibaca: {len(df)} baris")
     print(f"Jumlah proses yang ada: {sorted(df['n_procs'].unique())}")
     print(f"Ukuran data yang ada:   {sorted(df['n_data'].unique())}")
+    if 'K' in df.columns:
+        print(f"Nilai K yang ada:       {sorted(df['K'].unique())}")
     return df
 
 
-def buat_pengujian1(df, output='grafik_pengujian1.png'):
+def buat_pengujian1(df, output='grafik_pengujian1.png', K_utama=5):
     """
     PENGUJIAN 1: Sumbu X = Jumlah Data, tiap garis = jumlah proses.
-    
+
     Ini menjawab pertanyaan:
     'Semakin banyak data, waktu naik seberapa cepat untuk tiap konfigurasi proses?'
     """
+    if 'K' in df.columns and K_utama is not None:
+        df = df[df['K'] == K_utama].copy()
+        judul_k = f' (K={int(K_utama)})'
+    else:
+        judul_k = ''
+
     fig, ax = plt.subplots(figsize=(11, 7))
 
     daftar_proses = sorted(df['n_procs'].unique())
@@ -117,7 +128,7 @@ def buat_pengujian1(df, output='grafik_pengujian1.png'):
                         ha='center', va='bottom',
                         fontsize=6.5, color=warna)
 
-    ax.set_title('Pengujian 1: Waktu Komputasi untuk Berbagai Jumlah Data\nterhadap Berbagai Jumlah N',
+    ax.set_title(f'Pengujian 1: Waktu Komputasi untuk Berbagai Jumlah Data\nterhadap Berbagai Jumlah N{judul_k}',
                  fontsize=12, fontweight='bold', pad=12)
     ax.set_xlabel('Jumlah Data', fontsize=11)
     ax.set_ylabel('Waktu Komputasi (detik)', fontsize=11)
@@ -138,13 +149,19 @@ def buat_pengujian1(df, output='grafik_pengujian1.png'):
     print(f"[OK] Grafik Pengujian 1 disimpan: {output}")
 
 
-def buat_pengujian2(df, output='grafik_pengujian2.png'):
+def buat_pengujian2(df, output='grafik_pengujian2.png', K_utama=5):
     """
     PENGUJIAN 2: Sumbu X = Jumlah Proses, tiap garis = ukuran data.
-    
+
     Ini menjawab pertanyaan:
     'Semakin banyak proses, waktu turun seberapa cepat untuk tiap ukuran data?'
     """
+    if 'K' in df.columns and K_utama is not None:
+        df = df[df['K'] == K_utama].copy()
+        judul_k = f' (K={int(K_utama)})'
+    else:
+        judul_k = ''
+
     fig, ax = plt.subplots(figsize=(11, 7))
 
     daftar_data = sorted(df['n_data'].unique())
@@ -182,7 +199,7 @@ def buat_pengujian2(df, output='grafik_pengujian2.png'):
                         ha='center', va='bottom',
                         fontsize=6.5, color=warna)
 
-    ax.set_title('Pengujian 2: Waktu Komputasi untuk Berbagai Jumlah N\nterhadap Berbagai Jumlah Data',
+    ax.set_title(f'Pengujian 2: Waktu Komputasi untuk Berbagai Jumlah N\nterhadap Berbagai Jumlah Data{judul_k}',
                  fontsize=12, fontweight='bold', pad=12)
     ax.set_xlabel('Jumlah N (Proses)', fontsize=11)
     ax.set_ylabel('Waktu Komputasi (detik)', fontsize=11)
@@ -201,6 +218,82 @@ def buat_pengujian2(df, output='grafik_pengujian2.png'):
     plt.savefig(output, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"[OK] Grafik Pengujian 2 disimpan: {output}")
+
+
+def buat_pengujian3(df, output='grafik_pengujian3.png', n_data_utama=50000):
+    """
+    PENGUJIAN 3: Sumbu X = Nilai K, tiap garis = jumlah proses.
+
+    Ini menjawab pertanyaan:
+    'Semakin besar K (jumlah cluster), bagaimana waktu komputasi berubah?'
+    """
+    if 'K' not in df.columns:
+        print("[SKIP] Kolom 'K' tidak ada di data — Pengujian 3 dilewati.")
+        return
+
+    daftar_k = sorted(df['K'].unique())
+    if len(daftar_k) < 2:
+        print("[SKIP] Hanya ada 1 nilai K — Pengujian 3 tidak perlu dibuat.")
+        return
+
+    # Pilih n_data yang representatif (default 50000, fallback ke tengah)
+    daftar_n = sorted(df['n_data'].unique())
+    if n_data_utama not in daftar_n:
+        n_data_utama = daftar_n[len(daftar_n) // 2]
+
+    df_plot = df[df['n_data'] == n_data_utama].copy()
+
+    fig, ax = plt.subplots(figsize=(11, 7))
+
+    daftar_proses = sorted(df_plot['n_procs'].unique())
+
+    for n_procs in daftar_proses:
+        subset = df_plot[df_plot['n_procs'] == n_procs].sort_values('K')
+        if subset.empty:
+            continue
+
+        k_vals = subset['K'].values
+        if n_procs == 1:
+            waktu = subset['serial_total'].values
+        else:
+            waktu = subset['paralel_total'].values
+
+        if n_procs in WARNA_PROSES:
+            warna, marker, label = WARNA_PROSES[n_procs]
+        else:
+            warna, marker, label = '#333333', 'x', f'{n_procs} Proses'
+
+        ax.plot(k_vals, waktu,
+                color=warna, marker=marker, label=label,
+                linewidth=1.8, markersize=8, markerfacecolor='white',
+                markeredgewidth=1.5)
+
+        for x, y in zip(k_vals, waktu):
+            ax.annotate(f'{y:.4f}',
+                        xy=(x, y),
+                        xytext=(0, 8),
+                        textcoords='offset points',
+                        ha='center', va='bottom',
+                        fontsize=7, color=warna)
+
+    ax.set_title(f'Pengujian 3: Pengaruh Nilai K terhadap Waktu Komputasi\n'
+                 f'(n_data = {n_data_utama:,})',
+                 fontsize=12, fontweight='bold', pad=12)
+    ax.set_xlabel('Nilai K (Jumlah Cluster)', fontsize=11)
+    ax.set_ylabel('Waktu Komputasi (detik)', fontsize=11)
+
+    ax.set_xticks(daftar_k)
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f'K={int(x)}'))
+
+    ax.legend(loc='upper left', fontsize=9, framealpha=0.9)
+    ax.grid(True, linestyle='--', alpha=0.4)
+    ax.set_facecolor('#fafafa')
+    fig.patch.set_facecolor('white')
+
+    plt.tight_layout()
+    plt.savefig(output, dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"[OK] Grafik Pengujian 3 disimpan: {output}")
 
 
 def cetak_tabel_ringkasan(df):
@@ -244,20 +337,35 @@ def cetak_tabel_ringkasan(df):
 # ============================================================
 
 def main():
-    parser = argparse.ArgumentParser(description='Buat grafik Pengujian 1 & 2 dari hasil CSV')
-    parser.add_argument('--csv', type=str, default='hasil.csv',
+    parser = argparse.ArgumentParser(description='Buat grafik Pengujian 1, 2 & 3 dari hasil CSV')
+    parser.add_argument('--csv',          type=str, default='hasil.csv',
                         help='Path ke file hasil CSV (default: hasil.csv)')
-    parser.add_argument('--out1', type=str, default='grafik_pengujian1.png',
-                        help='Nama output Pengujian 1 (default: grafik_pengujian1.png)')
-    parser.add_argument('--out2', type=str, default='grafik_pengujian2.png',
-                        help='Nama output Pengujian 2 (default: grafik_pengujian2.png)')
+    parser.add_argument('--out3',         type=str, default='grafik_pengujian3.png',
+                        help='Nama output Pengujian 3 — Waktu vs K (default: grafik_pengujian3.png)')
+    parser.add_argument('--n-data-utama', type=int, default=50000,
+                        help='Ukuran data yang dipakai untuk Pengujian 3 (default: 50000)')
     args = parser.parse_args()
 
     df = load_hasil(args.csv)
     cetak_tabel_ringkasan(df)
-    buat_pengujian1(df, args.out1)
-    buat_pengujian2(df, args.out2)
-    print("\n[SELESAI] Kedua grafik berhasil dibuat.")
+
+    # Pengujian 1 & 2: buat grafik terpisah untuk setiap nilai K
+    if 'K' in df.columns:
+        daftar_k = sorted(df['K'].unique())
+    else:
+        daftar_k = [None]
+
+    for k in daftar_k:
+        if k is not None:
+            suffix = f'_K{int(k)}'
+        else:
+            suffix = ''
+        buat_pengujian1(df, f'grafik_pengujian1{suffix}.png', K_utama=k)
+        buat_pengujian2(df, f'grafik_pengujian2{suffix}.png', K_utama=k)
+
+    # Pengujian 3: Waktu vs K (satu grafik, semua K dibandingkan)
+    buat_pengujian3(df, args.out3, n_data_utama=args.n_data_utama)
+    print("\n[SELESAI] Semua grafik berhasil dibuat.")
 
 
 if __name__ == '__main__':
